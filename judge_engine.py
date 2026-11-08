@@ -276,7 +276,7 @@ class HttpAgentHandle:
     """
 
     def __init__(self, base_url: str, config: AgentConfig, token: Optional[str] = None) -> None:
-        """base_url looks like http://localhost:5008."""
+        """base_url looks like http://127.0.0.1:5008."""
         parsed = urlparse(base_url)
         if parsed.scheme != "http" or not parsed.hostname:
             raise ValueError(f"bot URL must look like http://host:port, got {base_url!r}")
@@ -916,8 +916,13 @@ EXIT_CANNOT_RUN = 3  # e.g. neither bot could be reached
 
 
 def bot_url(value: str) -> str:
-    """Accept a full URL (http://host:port) or just a port number (5008)."""
-    return f"http://localhost:{value}" if value.isdigit() else value
+    """Accept a full URL (http://host:port) or just a port number (5008).
+
+    A bare port maps to 127.0.0.1, not "localhost": on Windows "localhost"
+    resolves to ::1 first, and a refused IPv6 connect takes ~2 s there, which
+    used up the whole health-check deadline so working bots looked dead.
+    """
+    return f"http://127.0.0.1:{value}" if value.isdigit() else value
 
 
 def build_parser() -> argparse.ArgumentParser:

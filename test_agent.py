@@ -195,3 +195,36 @@ def test_reads_port_from_environment():
 # ---------------------------------------------------------------------------
 # Add your own tests below, e.g. "with two aces preflop my bot raises".
 # ---------------------------------------------------------------------------
+
+
+def test_strategy_crash_falls_back_to_a_legal_action(bot):
+    # A bug in brain.py must cost one weak decision, never an error.
+    module, client = bot
+    start_half(client)
+
+    def broken(obs):
+        raise ValueError("oops")
+
+    module.MEMORY["brain"].choose = broken
+    obs = Game(make_deal(1, 0), 0).observation(0)
+    assert module.choose_action(obs, module.MEMORY) in obs.legal_actions
+
+
+def test_hand_end_crash_is_contained(bot):
+    module, client = bot
+    start_half(client)
+
+    def broken(res):
+        raise ValueError("oops")
+
+    module.MEMORY["brain"].hand_over = broken
+    module.on_hand_end(None, module.MEMORY)   # must not raise
+
+
+def test_time_guard_thins_sampling_when_short_of_time(bot):
+    module, client = bot
+    start_half(client)
+    b = module.MEMORY["brain"]
+    b.hands, b.calls, b.think = 100, 1000, 2.0
+    b.update_pace(900)
+    assert b.stride > 1
